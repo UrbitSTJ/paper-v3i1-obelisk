@@ -15,7 +15,7 @@
 \renewcommand{\setmonofont}{\monofont}
 \renewcommand{\texttt}[1]{{\monofont #1}}
 % Define a new font family for small caps with FakeSlant
-\newfontfamily\slantedsmallcapsfont{Linux Libertine O}[
+\newfontfamily\slantedsmallcapsfont{Libertinus Serif}[
     FakeSlant = 0.1 % Adjust the slant amount as needed
 ]
 % Redefine \textsc to make small caps 25% larger
@@ -116,6 +116,21 @@
     commentstyle=\color{darkgray}\emph,
     keywordstyle=\color{darkgray}\bfseries
 }
+\lstdefinestyle{listingcode_sql}{
+    language=SQL,
+    basicstyle=\setmonofont\small,
+    numbers=left, numberstyle=\tiny, stepnumber=5, firstnumber=1, numberfirstline=false,
+    frame=tb,
+    tabsize=2,
+    columns=fixed,
+    showstringspaces=false,
+    showtabs=false,
+    showspaces=false,
+    keepspaces,
+    upquote=true,
+    commentstyle=\color{darkgray}\emph,
+    keywordstyle=\color{darkgray}\bfseries
+}
 \lstdefinestyle{listingcode_c}{
     language=C,
     basicstyle=\setmonofont\small,
@@ -159,7 +174,7 @@
 
 % Turn off when producing release version.
 \usepackage{lineno}
-% \linenumbers
+\linenumbers
 
 % Bibliography management
 \usepackage[
