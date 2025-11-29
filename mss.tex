@@ -954,8 +954,8 @@ content history.
 
 FROM sys.sys-log SELECT tmsp, agent, component, name ;
 
-FROM sys.data-log SELECT tmsp, ship, agent, namespace,
-  table, row-count ;
+FROM sys.data-log
+SELECT tmsp, ship, agent, namespace, table, row-count ;
 
 /* Start exploring. Return complete sentences,
   if you like.
