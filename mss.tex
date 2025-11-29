@@ -55,7 +55,7 @@ The Obelisk \textsc{rdbms} and urQL scripting language\footnote{We prefer \emph{
 
 Obelisk's urQL, while clearly a dialect of \textsc{sql}, fixes numerous deficiencies in \textsc{sql}\footnote{E.g. the \textsc{sql} standard does not truly implement sets by default. Obelisk does.}, elevates composability to a syntactic requirement---not merely an option, adds one completely new major feature, time travel,\footnote{\citet{DarwenDate1998}; \citet{DarwenDate2002}. While influential in other aspects of Obelisk's design. We are less familiar with their work on temporal databases, so their research on temporal databases was not especially influential. Without any direct knowledge of his work, we credit the reputation of Rich Hickey.} and leaves no functionality inaccessible to the normal user.
 
-The \textsc{rdbms} evolution that is Obelisk was greatly inspired by the Urbit architecture. Urbit is a computer whose entire state (OS and user space) is a pure function of its prior state.\footnote{\citet{Whitepaper.} Is any sufficiently complex computer function completely pure? Urbit and Obelisk both rely on crash to reject invalid commands that parsing and the \textsc{api} type system cannot otherwise validate.} The Urbit computer itself is an \textsc{acid} database. The entire state of the server is one noun\footnote{\emph{noun} is an Urbit abstraction that maps beautifully to English. It is either a natural number, or an ordered pair of nouns. Thus the fundamental data structure of Urbit (and Obelisk) is a binary tree of natural numbers.} that advances only through pure functions. urQL's syntax is more than a ``better" scripting language, it is an accurate reflection of the underlying database server's operations. Anything the user can accomplish through urQL they can also do through the \textsc{api}\footnote{Of the \textsc{sql} \textsc{rdbms}s that do have \textsc{api}s, they are uniformly bolted-on afterthoughts.}, and vice versa. Together with Obelisk's native time travel capabilities and idempotence, there are no mysteries confronting the user, no functionality outside the scope of the \textsc{api}/scripting language like performing audits with database logs. There are no logs. (There are system views that emulate logs to support the familiar log analysis pattern.) Obelisk's state is both its current state and all prior states.\footnote{With the sole exception of dropping a database from the server, in which case all traces of the database vanish from the server.}
+The \textsc{rdbms} evolution that is Obelisk was greatly inspired by the Urbit architecture. Urbit is a computer whose entire state (OS and user space) is a pure function of its prior state.\footnote{\citet{Whitepaper}. Is any sufficiently complex computer function completely pure? Urbit and Obelisk both rely on crash to reject invalid commands that parsing and the \textsc{api} type system cannot otherwise validate.} The Urbit computer itself is an \textsc{acid} database. The entire state of the server is one noun\footnote{The \emph{noun} is an Urbit abstraction that maps beautifully to English. It is either a natural number, or an ordered pair of nouns. Thus the fundamental data structure of Urbit (and Obelisk) is a binary tree of natural numbers.} that advances only through pure functions. urQL's syntax is more than a ``better" scripting language, it is an accurate reflection of the underlying database server's operations. Anything the user can accomplish through urQL they can also do through the \textsc{api}\footnote{Of the \textsc{sql} \textsc{rdbms}s that do have \textsc{api}s, they are uniformly bolted-on \mbox{afterthoughts}.}, and vice versa. Together with Obelisk's native time travel capabilities and idempotence, there are no mysteries confronting the user, no functionality outside the scope of the \textsc{api}/scripting language like performing audits with database logs. There are no logs. (There are system views that emulate logs to support the familiar log analysis pattern.) Obelisk's state is both its current state and all prior states.\footnote{With the sole exception of dropping a database from the server, in which case all traces of the database vanish from the server.}
 
 Obelisk's major innovations include:
 
@@ -106,7 +106,7 @@ And the database is not even visible in the current context.
 
 \begin{lstlisting}[style=listingcode_sql]
 FROM sys.sys.databases AS OF NOW
-SELECT *;
+SELECT * ;
 
 %obelisk-result:
   %results
@@ -129,7 +129,7 @@ We can see it in a future time context.
 
 \begin{lstlisting}[style=listingcode_sql]
 FROM sys.sys.databases AS OF ~2099.1.1
-SELECT *;
+SELECT * ;
 
 database  sys-agent  sys-tmsp  data-ship
  ↳ data-agent  data-tmsp
@@ -179,7 +179,7 @@ SELECT * ;
 \end{lstlisting}
 
 \noindent
-As explained above, the database engine returns metadata for this query which allows us to identify the implicit idempotent query. Any \lstinline[style=inlinecode]{AS OF} time >= \lstinline[style=inlinecode]{~2024.10.2..16.54.41..df15} and < \lstinline[style=inlinecode]{~2024.10.4..17.32.11..a1c2} is the same idempotent query.
+As explained above, the database engine returns metadata for this query which allows us to identify the implicit idempotent query. Any \lstinline[style=inlinecode]{AS OF} time \lstinline[style=inlinecode]{>= ~2024.10.2..16.54.41..df15} and \lstinline[style=inlinecode]{< ~2024.10.4..17.32.11..a1c2} is the same idempotent query.
 
 \begin{lstlisting}[style=listingcode_sql]
 FROM db2..my-table-1 AS OF ~2024.10.2..16.54.41..df15
