@@ -1,6 +1,9 @@
 \documentclass[twoside]{article}
 
 \usepackage{ustj}
+\usepackage{pdflscape}
+\usepackage{multicol}
+\usepackage{caption}
 
 \addbibresource{mss.bib}
 
@@ -444,33 +447,224 @@ Shrubbery support provides for hybrid relational/hierarchical data processing. T
 \section{Data Structures}
 
 \begin{quote}
-Bad programmers worry about the code. Good programmers worry about data structures and their relationships.  (Linus Torvalds)
+Bad programmers worry about the code. Good programmers worry about data structures and their relationships (Torvalds, 2016).
 \end{quote}
 
 To better understand the workings of Obelisk we turn to the data structures. Obelisk is a work in progress approaching a beta release, so some structures still may change over time.
 
 \subsection[\textsc{ast}/\textsc{api}]{AST/API}
 
-The Obelisk parser parses urQL commands into the structures in file \lstinline[style=inlinecode]{sur/ast.hoon}, which also serves as the Obelisk \textsc{api}. We show the most important schema and content manipulating commands in Figure 1. Missing from the chart is \lstinline[style=inlinecode]{qualified-table}:
+The Obelisk parser parses urQL commands into the structures in file \lstinline[style=inlinecode]{sur/ast.hoon}, which also serves as the Obelisk \textsc{api}. We show the most important schema and content manipulating commands in Figure~\ref{fig:obelisk_ast_schema}. A \lstinline[style=inlinecode]{qualified-column} is one qualified by a \lstinline[style=inlinecode]{qualified-} \lstinline[style=inlinecode]{table}.
 
-\begin{lstlisting}[style=listingblock]
-+$  qualified-table
-  $:  %qualified-table
-      ship=(unit @p)
-      database=@tas
-      namespace=@tas
-      name=@tas
-      alias=(unit @t)
-  ==
+\begin{landscape}
+\begin{figure}[p]
+\centering
+\vspace*{-0.8cm} % Adjust for header space
+\begin{lstlisting}[style=listingblock, basicstyle=\setmonofont\footnotesize,numbers=none, xleftmargin=3em, multicols=3]
+:: create-database
+$:  %create-database
+    name=@tas
+	  as-of=(unit as-of)
+==
+
+:: drop-database         
+$:  %drop-database
+    name=@tas
+    force=?
+==
+
+:: create-namespace
+$:  %create-namespace
+    database-name=@tas
+    name=@tas
+    as-of=(unit as-of)
+==
+
+:: create-table
+$:  %create-table
+    table=qualified-table
+    columns=(list column)
+    pri-indx=(list ordered-column)
+    foreign-keys=(list foreign-key)
+    as-of=(unit as-of)
+==
+
+:: predicate
+(tree predicate-component)
+:: qualified-table
+$:  %qualified-table
+    ship=(unit @p)
+    database=@tas
+    namespace=@tas
+    name=@tas
+    alias=(unit @t)
+==
+
+:: drop-table
+$:  %drop-table
+    table=qualified-table
+    force=?
+    as-of=(unit as-of) 
+==
+
+:: update
+$:  %update
+    ctes=(list cte)
+    table=qualified-table
+    as-of=(unit as-of)
+    $:  columns=(list qualified-column)
+        values=(list value-or-default)
+    ==
+    =predicate
+==
+
+
+
+
+:: delete
+$:  %delete
+    ctes=(list cte)
+    table=qualified-table
+    as-of=(unit as-of)
+    =predicate 
+==
+
+:: truncate-table
+$:  %truncate-table
+    table=qualified-table
+    as-of=(unit as-of)
+==
+
+:: predicate-component
+ $? ops-and-conjs
+	 qualified-column
+	 unqualified-column
+	 dime
+	 value-literals
+    cte-alias
+    scalar-alias
+    aggregate 
+==
+
+:: column
+$:  %column
+    name=@tas
+    type=@ta
+==
 \end{lstlisting}
-
-A \lstinline[style=inlinecode]{qualified-column} is one qualified by a \lstinline[style=inlinecode]{qualified-} \lstinline[style=inlinecode]{table}.
+% \vspace*{-0.5cm} % Adjust for footer space
+\caption{Obelisk schema creation and modification \textsc{ast}/\textsc{api} structures, from \texttt{/sur/ast}.}
+\label{fig:obelisk_ast_schema}
+\end{figure}
+\end{landscape}
 
 Obelisk does not yet support interacting with tables on foreign ships, so qualification is currently only by database and namespace. An alias may be assigned in the urQL. There is no distinction in urQL or the \textsc{ast} between tables and views. A view may shadow a table in the context of queries, but schema and data manipulating commands always operate on the specified table.
 
 We see that \lstinline[style=inlinecode]{DELETE} requires a predicate (unlike standard \textsc{sql}) and the predicate data structure is tree-shaped. Predicate nodes are operators, conjunctions, or any number of representations of data.
 
-Figure 2 presents the \lstinline[style=inlinecode]{selection} data structure, also a tree structure which accommodates either a set operator or one of three other structures as nodes. \lstinline[style=inlinecode]{insert} and \lstinline[style=inlinecode]{merge} are for future implementation using the \lstinline[style=inlinecode]{%into} operator. The \lstinline[style=inlinecode]{query} data structure is central to reading and formatting persisted data and can be combined with any of the regular set operators (\lstinline[style=inlinecode]{%union}, \lstinline[style=inlinecode]{%except},\lstinline[style=inlinecode]{%intersect},\lstinline[style=inlinecode]{%divided-by}). If there are \textsc{cte}s, they are processed first to return one relation each. Prior \textsc{cte} relations are accessible by subsequent \textsc{cte}s. Internally different kinds of relation data structure represent data returned by \textsc{cte}s (\lstinline[style=inlinecode]{cte-alias}) or more commonly \lstinline[style=inlinecode]{qualified-table}, which includes (possibly table-shadowing) views. (\lstinline[style=inlinecode]{query-row} is a placeholder for future temporary table urQL syntax.)
+Figure~\ref{fig:obelisk_query_ast} presents the \lstinline[style=inlinecode]{selection} data structure, also a tree structure which accommodates either a set operator or one of three other structures as nodes. \lstinline[style=inlinecode]{insert} and \lstinline[style=inlinecode]{merge} are for future implementation using the \lstinline[style=inlinecode]{%into} operator. The \lstinline[style=inlinecode]{query} data structure is central to reading and formatting persisted data and can be combined with any of the regular set operators (\lstinline[style=inlinecode]{%union}, \lstinline[style=inlinecode]{%except},\lstinline[style=inlinecode]{%intersect},\lstinline[style=inlinecode]{%divided-by}). If there are \textsc{cte}s, they are processed first to return one relation each. Prior \textsc{cte} relations are accessible by subsequent \textsc{cte}s. Internally different kinds of relation data structure represent data returned by \textsc{cte}s (\lstinline[style=inlinecode]{cte-alias}) or more commonly \lstinline[style=inlinecode]{qualified-table}, which includes (possibly table-shadowing) views. (\lstinline[style=inlinecode]{query-row} is a placeholder for future temporary table urQL syntax.)
+
+\begin{landscape}
+\begin{figure}[p]
+\centering
+\vspace*{-0.8cm} % Adjust for header space
+\begin{lstlisting}[style=listingblock, basicstyle=\setmonofont\footnotesize,numbers=none, xleftmargin=3em, multicols=3]
+:: selection
+$:  %selection
+    ctes=(list cte)
+    set-functions=(tree set-function)
+==
+
+:: set-function
+$?(set-cmd set-op) 
+
+:: query
+$:  %query
+    from=(unit from)
+    scalars=(list scalar)
+    =predicate
+    group-by=(list grouping-column)
+    having=predicate
+    =select
+    order-by=(list ordering-column) 
+==
+
+:: set-op
+$?  %union
+    %except
+    %intersect
+    %divided-by
+    %divide-with-remainder
+    %into
+==
+
+
+:: set-cmd
+$%(insert merge query)  
+
+:: cte
+$:  %cte
+    name=@tas
+    =query 
+==
+
+:: from
+$:  %from
+    =relation
+    as-of=(unit as-of)
+    joins=(list joined-object)  
+==
+
+:: scalar
+$:  %scalar
+    scalar=scalar-function
+    alias=@t
+==
+
+:: select
+$:  %select
+    top=(unit @ud)
+    columns=(list selected-column)  
+==
+
+
+
+:: selected-column
+$%  qualified-column
+    unqualified-column
+    selected-aggregate
+    selected-value
+    selected-all
+    selected-all-object 
+==
+
+:: insert
+$:  %insert
+	  table=qualified-table
+	  as-of=(unit as-of)
+	  columns=(unit (list @tas))
+	  values=insert-values
+==
+
+:: relation
+$%  qualified-table
+    cte-alias
+    query-row
+==
+
+:: joined-object
+$:  %joined-object
+    join=join-type
+    =relation
+    as-of=(unit as-of)
+    =predicate
+==
+\end{lstlisting}
+% \vspace*{-0.5cm} % Adjust for footer space
+\caption{Obelisk query and selection \textsc{ast}/\textsc{api} structures, from \texttt{/sur/ast}.}
+\label{fig:obelisk_query_ast}
+\end{figure}
+\end{landscape}
 
 \lstinline[style=inlinecode]{selected-column} deals with all the different ways columns and data may be selected in urQL, qualified and unqualified columns, literals, all columns across all joins, and all columns of a specified relation. (Aggregate functions are for a future release.)
 
@@ -486,47 +680,244 @@ would return one \lstinline[style=inlinecode]{vector} of \lstinline[style=inline
 
 \subsection{Persistence Layer}
 
-At the very top of the Persistence Layer (Figure 3) is the server data structure.
+At the very top of the Persistence Layer (Figure\ref{fig:obelisk_persistence_ast}) is the server data structure.
 
-\begin{lstlisting}[style=listingblock, caption={Obelisk Persistence Layer Structures}, label={lst:obelisk_persistence}]
+\begin{lstlisting}[style=listingblock, label={lst:obelisk_persistence}]
 +$  server  (map @tas database)
 \end{lstlisting}
 
+\noindent
 This is simply an index into all the databases, including the \lstinline[style=inlinecode]{%sys} database tracking other databases. This is the noun which the Obelisk app persists. Alternate implementations using an app structure other than the one provided with Obelisk merely need to persist this noun.
+
+\begin{landscape}
+\begin{figure}[p]
+\centering
+\vspace*{-0.8cm} % Adjust for header space
+\begin{lstlisting}[style=listingblock, basicstyle=\setmonofont\footnotesize,numbers=none, xleftmargin=3em, multicols=3]
+:: database
+$:  %database
+    name=@tas
+    created-provenance=path
+    created-tmsp=@da
+    sys=((mop @da schema) gth)
+    content=((mop @da dataa) gth)
+    =view-cache  
+==
+
+:: view-cache
+((mop ns-obj-key cache) ns-obj-comp)  
+
+:: ns-obj-key
+$:  ns=@tas
+    obj=@tas
+    time=@da
+==
+
+:: cache
+$:  %cache
+    tmsp=@da
+    content=(unit cache-content)
+==
+
+
+:: ns-obj-comp
+|=  [p=data-obj-key q=data-obj-key]
+^-  ?
+
+:: cache-content
+$:  rowcount=@
+    rows=(list (map @tas @))
+==
+
+:: schema
+$:  %schema
+    provenance=path
+    tmsp=@da
+    =namespaces
+    tables=(map [@tas @tas] table)
+    views=((mop data-obj-key view)
+      ns-obj-comp)
+==
+
+:: data
+$:  %data
+    ship=@p
+    provenance=path
+    tmsp=@da
+    files=(map [@tas @tas] file)
+==
+:: table
+$:  %table
+    provenance=path
+    tmsp=@da
+    =column-lookup
+    type-lookup=(map @tas @ta)
+    pri-indx=index
+    columns=(list column)
+    indices=(list index)  
+==
+
+:: column-lookup
+(map @tas [aura @])
+
+:: view
+$:  %view
+    provenance=path
+    tmsp=@da
+    =selection
+    =column-lookup
+    type-lookup=(map @tas @ta)
+    columns=(list column)
+    ordering=(list column-order)  
+==
+\end{lstlisting}
+% \vspace*{-0.5cm} % Adjust for footer space
+\caption{Obelisk persistence layer \textsc{ast}/\textsc{api} structures, from \texttt{/sur/server-state}.  (Continues on next page.)}
+\label{fig:obelisk_persistence_ast}
+\end{figure}
+\end{landscape}
+
+\begin{figure}[h]
+\ContinuedFloat
+\centering
+% \vspace*{-0.8cm} % Adjust for header space
+\begin{lstlisting}[style=listingblock, basicstyle=\setmonofont\footnotesize,numbers=none, xleftmargin=3em, multicols=2, keepspaces=true, columns=flexible]
+:: file
+$:  %file
+    ship=@p
+    provenance=path
+    tmsp=@da
+    =column-addrs
+    rowcount=@
+    pri-idx=(tree [(list @) (map @tas @)])
+    indexed-rows=(list indexed-row)
+    =column-catalog  
+==
+:: indexed-row
+$:  %indexed-row
+    key=(list @)
+    data=(map @tas @)
+==
+
+
+
+
+
+::
+\end{lstlisting}
+% \vspace*{-0.5cm} % Adjust for footer space
+\caption{Obelisk persistence layer \textsc{ast}/\textsc{api} structures, from \texttt{/sur/server-state}.  (Continued from previous page.)}
+\label{fig:obelisk_persistence_ast_2}
+\end{figure}
 
 The \lstinline[style=inlinecode]{database} structure reveals the simplicity of Obelisk time-travel. The database schema and content are both \lstinline[style=inlinecode]{+mop}s (ordered \lstinline[style=inlinecode]{+map}s) indexed by time. The magic of Urbit noun de-duplication does the rest.
 
 \lstinline[style=inlinecode]{view-cache} provides for fast retrieval of view data after a view has been requested once. Any alteration of table data underlying a view will create a new entry keyed on namespace, view name, and time, but without content. The first request for that key will cause the entire \lstinline[style=inlinecode]{selection} to execute and save the content. There are currently only system views. User-defined views will be in a later release.
 
-\lstinline[style=inlinecode]{table} defines the schema used to persist data for a persisted relation. \lstinline[style=inlinecode]{'column-lookup'} returns the column type (aura) as well as its position in the canonical ordering. Tables require a unique primary index, and for now there are no secondary table indices.
+\lstinline[style=inlinecode]{table} defines the schema used to persist data for a persisted relation. \lstinline[style=inlinecode]{'column-lookup'} returns the column type (aura) as well as its position in the canonical ordering. \lstinline[style=inlinecode]{table}s require a unique primary index, and for now there are no secondary table indices.
 
-\begin{lstlisting}[style=listingblock, caption={Obelisk Index Structure}, label={lst:obelisk_table}]
+\begin{lstlisting}[style=listingblock, label={lst:obelisk_table}]
 +$  index
-  $:  %index
-    unique=?
-    key=(list key-column)
-    ==
+    $:  %index
+        unique=?
+        key=(list key-column)
+==  ==
 +$  key-column
-  $:  %key-column
-    name=@tas
-    =aura
-    ascending=?
-    ==
+    $:  %key-column
+      name=@tas
+      =aura
+      ascending=?
+==  ==
 \end{lstlisting}
 \noindent
 \lstinline[style=inlinecode]{columns} returns the columns in canonical order (the order originally defined).
 
-With the table definition established, the actual data is in a \lstinline[style=inlinecode]{file} structure, also containing relevant metadata. At the most basic level, every row of persisted data consists of a key---a list of atoms which is one or more of the subsequent columns, and the column data, which maps from column name to the atomic value. Of all the persistence layer structures, the one actually persisting data is probably the most prone to future development. For purposes of alternating query execution plans, data is persisted in more than one way. \lstinline[style=inlinecode]{(tree [(list @) (map @tas @)])} is an ordered map allowing ordered selection on partial keys. \lstinline[style=inlinecode]{column-catalog} is a currently abandoned attempt at persisting data column-wise. (Inserting large amounts of data stored column-wise proved impractical, so for now column-wise storage is deferred.) \lstinline[style=inlinecode]{indexed-rows} is the only form currently in use, so for the beta release every query plan execution is a table scan.
+With the table definition established, the actual data is in a \lstinline[style=inlinecode]{file} structure, also containing relevant metadata. At the most basic level, every row of persisted data consists of a key---a list of atoms which is one or more of the subsequent columns, and the column data, which maps from column name to the atomic value. Of all the persistence layer structures, the one actually persisting data is probably the most prone to future development. For purposes of alternating query execution plans, data is persisted in more than one way. \lstinline[style=inlinecode]{(tree [(list @)} \lstinline[style=inlinecode]{(map @tas @)])} is an ordered map allowing ordered selection on partial keys. \lstinline[style=inlinecode]{column-catalog} is a currently abandoned attempt at persisting data column-wise. (Inserting large amounts of data stored column-wise proved impractical, so for now column-wise storage is deferred.) \lstinline[style=inlinecode]{indexed-rows} is the only form currently in use, so for the beta release every query plan execution is a table scan.
 
 \subsection{Presentation Layer}
 
-Aside from urQL, Obelisk users only ever interact with the presentation layer (fig. 4). The Obelisk app allows for two actions, \lstinline[style=inlinecode]{%tape}, which submits a command and default database name in a urQL \lstinline[style=inlinecode]{$tape}, and \lstinline[style=inlinecode]{%commands}, which is a list of \textsc{api} commands where every table and view is already fully qualified by database.
+Aside from urQL, Obelisk users only ever interact with the presentation layer (Figure~\ref{fig:obelisk_presentation_ast}). The Obelisk app allows for two actions, \lstinline[style=inlinecode]{%tape}, which submits a command and default database name in a urQL \lstinline[style=inlinecode]{$tape}, and \lstinline[style=inlinecode]{%commands}, which is a list of \textsc{api} commands where every table and view is already fully qualified by database.
+
+\begin{landscape}
+\begin{figure}[p]
+\centering
+\vspace*{-0.8cm} % Adjust for header space
+\begin{lstlisting}[style=listingblock, basicstyle=\setmonofont\footnotesize,numbers=none, xleftmargin=3em, multicols=3]
+:: action
+$%  $:  %tape
+        default-database=@tas
+        urql=tape
+    ==
+    $:  %commands
+        cmds=(list command)
+==  ==
+
+:: cmd-result
+$:  %results
+    (list result)
+==
+
+:: vector
+$:  %vector
+    (lest vector-cell)
+==
+
+:: vector-cell
+[p=@tas q=dime]
+:: result
+$%  [%message msg=@t]
+    [%vector-count count=@ud]
+    [%server-time date=@da]
+    [%security-time date=@da]
+    [%schema-time date=@da]
+    [%data-time date=@da]
+    [%result-set (list vector)]
+==
+
+
+
+
+
+
+
+
+
+
+
+
+:: command
+$%  alter-index
+    alter-namespace
+    alter-table
+    create-database
+    create-index
+    create-namespace
+    create-table
+    create-view
+    delete
+    drop-database
+    drop-index
+    drop-namespace
+    drop-table
+    drop-view
+    grant
+    revoke
+    selection
+    truncate-table
+    update
+==
+\end{lstlisting}
+% \vspace*{-0.5cm} % Adjust for footer space
+\caption{Obelisk presentation layer \textsc{ast}/\textsc{api} structures, from \texttt{/sur/obelisk}.}
+\label{fig:obelisk_presentation_ast}
+\end{figure}
+\end{landscape}
 
 This section has covered most of the available commands; several planned commands like alters, drops, and security commands will parse but are not yet supported in the Obelisk engine.
 
 Every urQL command returns a result structure of metadata and vectors, which we have already covered.
 
-An untapped area of investigation is to change the \lstinline[style=inlinecode]{%result-set} from returning \lstinline[style=inlinecode]{(list vector)} to returning a \lstinline[style=inlinecode]{list} of trap cores which emit \lstinline[style=inlinecode]{vector}. The lookup of columns row by row in the query relation is computationally intense and could be offloaded to the client side.
+An untapped area of investigation is to change the \lstinline[style=inlinecode]{%result-set} from returning \lstinline[style=inlinecode]{(list vector)} to returning a \lstinline[style=inlinecode]{list} of trap cores which emit \lstinline[style=inlinecode]{vector} when evaluated. The lookup of columns row by row in the query relation is computationally intense and could be offloaded to the client side.
 
 \section{Conclusion}
 
