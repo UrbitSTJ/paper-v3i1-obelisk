@@ -41,7 +41,7 @@
 
 \begin{abstract}
   \sloppy
-  Obelisk is a novel relational database management system (\textsc{rdbms}) and its scripting language, urQL, designed for the experimental Urbit computing platform but adaptable to other systems. Building on E.\ F.\ Codd’s relational algebra and unencumbered by backward \mbox{compatibility} constraints, Obelisk is a temporal relational database derived from first principles. Key innovations include time travel for querying \mbox{historical} database states, proper set implementation, elimination of nulls, idempotent queries, and enforced composability. Obelisk ensures all user operations are accessible via both the urQL scripting language and \textsc{api}, reflecting \mbox{Urbit’s} pure \mbox{functional} architecture. Obelisk’s time-travel feature indexes every schema and content state change by time, ensuring idempotent queries and atomic script execution. This paper explores how Obelisk advances relational database design while \mbox{addressing} \textsc{sql}’s deficiencies, offering a modern, \mbox{principled} approach to structured data management.
+  Obelisk is a novel relational database management system and its scripting language, urQL, designed for the experimental Urbit computing platform but adaptable to other systems. Building on E.\ F.\ Codd’s relational algebra and unencumbered by backward \mbox{compatibility} constraints, Obelisk is a temporal relational database derived from first principles. Key innovations include time travel for querying \mbox{historical} database states, proper set implementation, elimination of nulls, idempotent queries, and enforced composability. Obelisk ensures all user operations are accessible via both the urQL scripting language and \textsc{api}, reflecting \mbox{Urbit’s} pure \mbox{functional} architecture. Obelisk’s time-travel feature indexes every schema and content state change by time, ensuring idempotent queries and atomic script execution. This paper explores how Obelisk advances relational database design while \mbox{addressing} \textsc{sql}’s deficiencies, offering a modern, \mbox{principled} approach to structured data management.
 \end{abstract}
 
 % We will adjust page numbering in final editing.
@@ -52,11 +52,11 @@
 
 \section{Introduction}
 
-The Obelisk \textsc{rdbms} and urQL scripting language\footnote{We prefer \emph{scripting language} over \emph{query language} for semantic reasons. It does more than query.} run on the experimental Urbit computer and network but could just as well be implemented on any other computer---except for \mbox{certain} features dependent on Hoon language features or the Urbit network architecture.\footnote{Notably subnet security features and shrubbery enabling \lstinline[style=inlinecode]{SELECT} statements.} Like all relational databases, it is built upon E.\ F.\ Codd's pioneering computer science work developing the relational algebra and uniting it with set theory and predicate calculus.\footnote{\citet{Codd1970}; \citet{Chamberlin1974} Codd's seminal paper focuses primarily on studying set relations and does not invent a query language, but sets out the parameters for an effective and efficient language. Predicate calculus was already the obvious way to filter stored data. \citet{Chamberlin1974} treat it as a given, discussing their syntax for applying it.} As relational databases implementing \textsc{sql} came to dominate structured data storage the \textsc{sql} standard evolved, always bearing, and hindered by, the necessary constraint of backward compatibility. As the first and only \textsc{rdbms} for a new computing paradigm, Obelisk has no obligation to the past and so is free to build anew from first principles with all the learnings of the last half century while perpetuating the best features of \textsc{sql}.
+The Obelisk relational database management system (\textsc{rdbms}) and urQL scripting language\footnote{We prefer \emph{scripting language} over \emph{query language} for semantic reasons. It does more than query.} run on the experimental Urbit computer and network but could just as well be implemented on any other computer---except for \mbox{certain} features dependent on Hoon language features or the Urbit network architecture.\footnote{Notably subnet security features and shrubbery enabling \lstinline[style=inlinecode]{SELECT} statements.} Like all relational databases, it is built upon E.\ F.\ Codd's pioneering computer science work developing the relational algebra and uniting it with set theory and predicate calculus.\footnote{\citet{Codd1970}; \citet{Chamberlin1974} Codd's seminal paper focuses primarily on studying set relations and does not invent a query language, but sets out the parameters for an effective and efficient language. Predicate calculus was already the obvious way to filter stored data. \citet{Chamberlin1974} treat it as a given, discussing their syntax for applying it.} As relational databases implementing \textsc{sql} came to dominate structured data storage the \textsc{sql} standard evolved, always bearing, and hindered by, the necessary constraint of backward compatibility. As the first and only \textsc{rdbms} for a new computing paradigm, Obelisk has no obligation to the past and so is free to build anew from first principles with all the learnings of the last half century while perpetuating the best features of \textsc{sql}.
 
-Obelisk's urQL, while clearly a dialect of \textsc{sql}, fixes numerous deficiencies in \textsc{sql}\footnote{E.g. the \textsc{sql} standard does not truly implement sets by default. Obelisk does.}, elevates composability to a syntactic requirement---not merely an option, adds one completely new major feature, time travel,\footnote{\citet{DarwenDate1998}; \citet{DarwenDate2002}. While influential in other aspects of Obelisk's design. We are less familiar with their work on temporal databases, so their research on temporal databases was not especially influential. Without any direct knowledge of his work, we credit the reputation of Rich Hickey.} and leaves no functionality inaccessible to the normal user.
+Obelisk's urQL, while clearly a dialect of \textsc{sql}, fixes numerous deficiencies in \textsc{sql}\footnote{E.g. the \textsc{sql} standard does not truly implement sets by default. Obelisk does.}, elevates composability to a syntactic requirement (not merely an option), adds one completely new major feature, time travel,\footnote{\citet{DarwenDate1998}; \citet{DarwenDate2002}. While influential in other aspects of Obelisk's design. We are less familiar with their work on temporal databases, so their research on temporal databases was not especially influential. Without any direct knowledge of his work, we credit the reputation of Rich Hickey.} and leaves no functionality inaccessible to the normal user.
 
-The \textsc{rdbms} evolution that is Obelisk was greatly inspired by the Urbit architecture. Urbit is a computer whose entire state (OS and user space) is a pure function of its prior state.\footnote{\citet{Whitepaper}. Is any sufficiently complex computer function completely pure? Urbit and Obelisk both rely on crash to reject invalid commands that parsing and the \textsc{api} type system cannot otherwise validate.} The Urbit computer itself is an \textsc{acid} database. The entire state of the server is one noun\footnote{The \emph{noun} is an Urbit abstraction that maps beautifully to English. It is either a natural number, or an ordered pair of nouns. Thus the fundamental data structure of Urbit (and Obelisk) is a binary tree of natural numbers.} that advances only through pure functions. urQL's syntax is more than a ``better" scripting language, it is an accurate reflection of the underlying database server's operations. Anything the user can accomplish through urQL they can also do through the \textsc{api}\footnote{Of the \textsc{sql} \textsc{rdbms}s that do have \textsc{api}s, they are uniformly bolted-on \mbox{afterthoughts}.}, and vice versa. Together with Obelisk's native time travel capabilities and idempotence, there are no mysteries confronting the user, no functionality outside the scope of the \textsc{api}/scripting language like performing audits with database logs. There are no logs. (There are system views that emulate logs to support the familiar log analysis pattern.) Obelisk's state is both its current state and all prior states.\footnote{With the sole exception of dropping a database from the server, in which case all traces of the database vanish from the server.}
+The \textsc{rdbms} evolution that is Obelisk was greatly inspired by the Urbit architecture. Urbit is a computer whose entire state (OS and userspace) is a pure function of its prior state.\footnote{\citet{Whitepaper}. Is any sufficiently complex computer function completely pure? Urbit and Obelisk both rely on crash to reject invalid commands that parsing and the \textsc{api} type system cannot otherwise validate.} The Urbit computer itself is an \textsc{acid} database. The entire state of the server is one noun\footnote{The \emph{noun} is an Urbit abstraction that maps beautifully to English. It is either a natural number, or an ordered pair of nouns. Thus the fundamental data structure of Urbit (and Obelisk) is a binary tree of natural numbers.} that advances only through pure functions. urQL's syntax is more than a ``better" scripting language, it is an accurate reflection of the underlying database server's operations. Anything the user can accomplish through urQL they can also do through the \textsc{api}\footnote{Of the \textsc{sql} \textsc{rdbms}s that do have \textsc{api}s, they are uniformly bolted-on \mbox{afterthoughts}.}, and vice versa. Together with Obelisk's native time travel capabilities and idempotence, there are no mysteries confronting the user, no functionality outside the scope of the \textsc{api}/scripting language like performing audits with database logs. There are no logs. (There are system views that emulate logs to support the familiar log analysis pattern.) Obelisk's state is both its current state and all prior states.\footnote{With the sole exception of dropping a database from the server, in which case all traces of the database vanish from the server.}
 
 Obelisk's major innovations include:
 
@@ -160,7 +160,7 @@ SELECT * ;
 \noindent
 (The example demonstrates urQL’s non-standard join and predicate syntax. A full explanation of these follows.)
 
-The astute reader may have already inferred the last missing piece of the time travel puzzle. When specified in a \lstinline[style=inlinecode]{FROM} clause, the database engine will use the closest content state less than or equal to the time requested, using the table schema in a state likewise less than or equal to that time.
+The astute reader may have already inferred the missing piece of the time travel puzzle. When specified in a \lstinline[style=inlinecode]{FROM} clause, the database engine will use the closest content state less than or equal to the time requested, using the table schema in a state likewise less than or equal to that time.
 
 \sloppy
 Suppose that \lstinline[style=inlinecode]{my-table} has content mutated at two times, \lstinline[style=inlinecode]{~2024.10.2..16.54.41..df15} and \lstinline[style=inlinecode]{~2024.10.4..17.32.11..a1c2}.
@@ -201,7 +201,7 @@ Idempotent queries have a big technical benefit. The engine can cache query resu
 \subsection{Relations}
 
 \sloppy
-So far we have casually referred  to \emph{tables} and \emph{views} as standard components of relational databases. In this section we introduce Codd's term, \emph{relation}.\footnote{\citet{Codd1970}.} (What follows is a hasty summary of Codd's formal definition, and it is somewhat more restrictive than Codd's definition in order to make a point further below.) Consider a proper set of data tuples (i.e. every member unique). All the tuples have the same length, and positionally each element across the tuples is of the same type. This is a \mbox{relation}. Arranging the tuples as rows in a 2D matrix (arbitrarily ordered), we can index the columns by unique labels.\footnote{Here we deviate from Codd's formal definition, where he only suggests the columns---he has formally defined them as domains---may be labeled, the domains are not necessarily unique. One must bear in mind Codd's work is theoretic. He even points out that he is not designing a data query language. He is providing the foundation upon which to design query languages.} We can refer to each element in any of the tuples by the column label and we have our definition of relation for the discussion below.
+So far we have casually referred  to \emph{tables} and \emph{views} as standard components of relational databases. In this section we introduce Codd's term, \emph{relation}.\footnote{\citet{Codd1970}.} (What follows is a hasty summary of Codd's formal definition, and it is somewhat more restrictive than Codd's definition in order to make a further point below.) Consider a proper set of data tuples (i.e. every member unique). All the tuples have the same length, and positionally each element across the tuples is of the same type. This is a \mbox{relation}. Arranging the tuples as rows in a 2D matrix (arbitrarily ordered), we can index the columns by unique labels.\footnote{Here we deviate from Codd's formal definition, where he only suggests the columns---he has formally defined them as domains---may be labeled, the domains are not necessarily unique. One must bear in mind Codd's work is theoretic. He even points out that he is not designing a data query language. He is providing the foundation upon which to design query languages.} We can refer to each element in the tuples by the column label, yielding a definition of relation for the discussion below.
 
 \subsection{Proper sets}
 
@@ -211,7 +211,8 @@ A \emph{table} in Obelisk is a set of immutable persistently stored relations---
 
 A \emph{view} is a persistently \emph{defined} relation. It is defined by \lstinline[style=inlinecode]{SELECT} commands and set operators over tables and views. The relation's set-like characteristic is maintained by shrinking the rows to a proper set. Views are indexed by time. A change to the definition or state of any table referenced in the definition results in a new time index. As mentioned earlier, if a user queries a view the system caches its state for that point in time. We distinguish between \emph{persistently defined} and \emph{persistently stored} because there is no requirement for view data to persist. Due to query idempotence it can always be recreated.
 
-The \lstinline[style=inlinecode]{SELECT} command itself is a special case. It defines a \mbox{relation}, but it is also a presentation specification, and the resulting presentation may not be a relation (by our restricted definition), even though the resulting rows always form a proper set. Here is an example.
+\sloppy
+The \lstinline[style=inlinecode]{SELECT} command is a special case. It defines a \mbox{relation}, but it is also a presentation specification. The resulting presentation may not be a relation (by our restricted definition), even though the resulting rows always form a proper set. %Here is an example.
 
 \begin{lstlisting}[style=listingcode_sql]
 FROM my-table
@@ -219,9 +220,9 @@ SELECT column-1, column-1, column-1
 \end{lstlisting}
 
 \noindent
-This command defines a \emph{proper} relation consisting of the column named \emph{column-1}, but the presentation layer repeats it three times. Thus the resulting presentation is not a (restricted) relation because there are three columns all with the same label.
+This command defines a \emph{proper} relation consisting of the column named \emph{column-1}, but the presentation layer repeats it three times. Thus the resulting presentation is not a (restricted) relation because there are three columns with the same label.
 
-This \lstinline[style=inlinecode]{SELECT} does result in a (restricted) relation
+This \lstinline[style=inlinecode]{SELECT} does result in a (restricted) relation,
 
 \begin{lstlisting}[style=listingcode_sql]
 FROM my-table
@@ -229,7 +230,7 @@ SELECT column-1, column-1 AS Col-2, column-1 AS Col-3
 \end{lstlisting}
 
 \noindent
-This quibbling is for the sake of emphasizing (our) formal definition of \emph{relation}, and to point out when defining a view the \lstinline[style=inlinecode]{SELECT} command must provide for unique column names. Informally one may consider the results of \lstinline[style=inlinecode]{SELECT} as a \emph{pseudo-relation}. 
+This quibble is for the sake of emphasizing (our) formal definition of \emph{relation}, and to point out when defining a view the \lstinline[style=inlinecode]{SELECT} command must provide for unique column names. Informally one may consider the results of \lstinline[style=inlinecode]{SELECT} as a \emph{pseudo-relation}. 
 
 Trivially \lstinline[style=inlinecode]{SELECT} without a \lstinline[style=inlinecode]{FROM} clause is a one-row relation because Obelisk always assigns unique labels to literals if not otherwise aliased.
 
@@ -318,15 +319,13 @@ The standard equality and inequality operators comparing any non-existing column
 
 \subsection{Relational Integrity}
 
-We plan to implement relational integrity by means of foreign key indices in a future release, substantially following the \textsc{sql} Standard.
+Relational integrity by means of foreign key indices is planned for a future release, substantially following the \textsc{sql} Standard.
 
 \section{Composability}
 
 \begin{quote}
 The universality of the data sublanguage lies in its descriptive ability \citep{Codd1970}.
 \end{quote}
-
-The first rule of Composability Club is ``have a query syntax that looks compositional.''
 
 \begin{lstlisting}[style=listingcode_sql]
 WITH <ctes>
@@ -341,12 +340,12 @@ ORDER BY
 TOP
 \end{lstlisting}
 
-\noindent
-This is the logical flow of data and operations defined by the \textsc{sql} standard (with a notable Obelisk addition discussed below) It is how users and the database engine agree on constructing proper results. Actual query execution plans may deviate in some way from rigidly following this logical path for performance reasons. This is why, unlike standard \textsc{sql}, urQL syntax sets the \lstinline[style=inlinecode]{SELECT} clause in its logical place, not before the \lstinline[style=inlinecode]{FROM} clause.
+The first rule of Composability Club is, ``Have a query syntax that looks compositional.''  This ordering is the logical flow of data and operations defined by the \textsc{sql} standard (with a notable Obelisk addition discussed below). It is how users and the database engine agree on constructing proper results. Actual query execution plans may deviate in some way from rigidly following this logical path for performance reasons. This is why, unlike standard \textsc{sql}, urQL syntax sets the \lstinline[style=inlinecode]{SELECT} clause in its logical place, not before the \lstinline[style=inlinecode]{FROM} clause.
+
 
 \subsection{Common Table Expressions}
 
-Common Table Expressions entered the \textsc{sql} standard\footnote{The \textsc{ansi}/\textsc{iso} \textsc{sql} standard defined Common Table Expressions in 1999.} to make it easier for users to reason about sub-queries. Inlining subqueries makes for bad readability. The \textsc{sql} Standard must maintain inlining backwards compatibility. urQL has no such constraint. It enforces \textsc{cte} composability by banning all subquery inlining.
+Common Table Expressions (\textsc{cte}s) entered the \textsc{sql} standard\footnote{The \textsc{ansi}/\textsc{iso} \textsc{sql} standard defined Common Table Expressions in 1999.} to make it easier for users to reason about sub-queries. Inlining subqueries makes for bad readability. The \textsc{sql} Standard must maintain inlining backwards compatibility. urQL has no such constraint. It enforces \textsc{cte} composability by banning all subquery inlining.
 
 \sloppy
 urQL requires a \textsc{cte} in all cases involving subqueries through runtime validation. Any usage in a predicate or scalar function that can accept a column value or literal also accepts a \textsc{cte} alias provided that the \textsc{cte} returns a singleton, one row by one column. This is not the case in the \lstinline[style=inlinecode]{SELECT} clause. Selecting a singleton \textsc{cte} is functionally equivalent to a \lstinline[style=inlinecode]{CROSS JOIN}, which urQL syntax prefers in the interest of explicit programming. Scalar function and predicate operators consuming a list (set) of values require the \textsc{cte} to return a single column of data. 
@@ -387,7 +386,7 @@ Obelisk security is believed to be robust up to disk and \textsc{ram} hacking.
 
 \section{The Shrubbery}
 
-Key to Codd's invention of the relational database is his critique of hierarchical databases.\footnote{\citet{Codd1970}, ``1.1.3 Access Path Dependence''. Codd uses the term \emph{data store} which is mostly interchangeable with \emph{database}, even if they conjure up different images in the mind.} It took another 20 years to mostly fulfill the demise of accessing data via paths. Yet the concept lingers and is not without merit. Urbit being both a computer fundamentally supporting a hierarchical (tree) architecture and a network of nodes with immutable identities is the perfect substrate for implementing a truly global namespace.\footnote{Not in the first beta release. The shrubbery concept of a universal namespace is an organic outgrowth of the Urbit file system (Clay). Within Urbit circles the concept is still amorphous. It could be more than an Urbit network \textsc{uri}, with endpoints functioning as data or software. It is hard to identify a single author or inventor. \patp{rovnys-ricfer} originated the term in conversation with \patp{littel-wolfur} and was the first to write about it (\patp{rovnys-ricfer}, personal communication, \textasciitilde 2025.10.18; \citeauthor{Blackman_YoungShrub}, undated). \patp{sarpen-laplux} developed the earliest working implementation in 2023. \patp{hastuc-dibtux} subsequently carried out extensive prototyping and advocacy (\citeyear{Fitzgerald_Shrub}). \patp{migrev-dolseg}'s \texttt{\%hawk} gall app is the most readily available and extensive implementation in this tradition to date (\citeyear{HanlenHawk}).}
+Key to Codd's invention of the relational database is his critique of hierarchical databases.\footnote{\citet{Codd1970}, ``1.1.3 Access Path Dependence''. Codd uses the term \emph{data store} which is mostly interchangeable with \emph{database}, even if they conjure up different images in the mind.} It took another 20 years to mostly fulfill the demise of accessing data via paths. Yet the concept lingers and is not without merit. Urbit being both a computer fundamentally supporting a hierarchical (tree) architecture and a network of nodes with immutable identities is the perfect substrate for implementing a truly global namespace.\footnote{Not in the first beta release. The shrubbery concept of a universal namespace is an organic outgrowth of the Urbit file system (Clay). Within Urbit circles the concept is still amorphous. It could be more than an Urbit network \textsc{uri}, with endpoints functioning as data or software. It is hard to identify a single author or inventor. \patp{rovnys-ricfer} originated the term in conversation with \patp{littel-wolfur} and was the first to write about it (\patp{rovnys-ricfer}, personal communication, \textasciitilde 2025.10.18; \citeauthor{Blackman_YoungShrub}, undated). \patp{sarpen-laplux} developed the earliest working implementation in 2023. \patp{hastuc-dibtux} subsequently carried out extensive prototyping and advocacy (\citeyear{Fitzgerald_Shrub}). \patp{migrev-dolseg}'s \texttt{\%hawk} Gall app is the most readily available and extensive implementation in this tradition to date (\citeyear{HanlenHawk}).}
 
 Obelisk fully supports global namespace access to data and schema. This urQL/Obelisk functionality is not easily duplicated on computers other than Urbit.
 
@@ -396,12 +395,12 @@ SELECT DATABASE animal-shelter
 \end{lstlisting}
 
 \noindent
-\lstinline[style=inlinecode]{SELECT DATABASE} returns the entire \emph{animal-shelter}\footnote{\citet{Levin2020} Available for several database platforms, this is a readily available non-trivial sample database that demonstrates natural primary table keys.} database noun.\footnote{Backups may be implemented as a copy of the database noun on another ship. The Urbit computer is already an \textsc{acid} database and nouns are de-duplicated on the same ship. So references to the same noun are pointers to the single physical occurrence of that noun.}
+\lstinline[style=inlinecode]{SELECT DATABASE} returns the entire \emph{animal-shelter}\footnote{\citet{Levin2020} Available for several database platforms, this is a readily available non-trivial sample database that demonstrates natural primary table keys.} noun.\footnote{Backups may be implemented as a copy of the database noun on another ship. The Urbit computer is already an \textsc{acid} database and nouns are de-duplicated on the same ship. So references to the same noun are pointers to the single physical occurrence of that noun.}
 
 Formatted as a path in the global Urbit namespace (beginning with ship identity)
 
 \begin{lstlisting}[style=listingcode_sql]
-~nomryg-nilref/%obelisk/animal-shelter
+/~nomryg-nilref/obelisk/animal-shelter
 \end{lstlisting}
 
 \noindent
@@ -412,16 +411,16 @@ Working our way down the schema hierarchy we have access to namespaces within a 
 \begin{lstlisting}[style=listingcode_sql]
 SELECT NAMESPACE animal-shelter.reference
 
-~/%obelisk/animal-shelter/reference
+~/obelisk/animal-shelter/reference
 \end{lstlisting}
 
 \noindent
-and pause to point out the path is on the local ship, but still confined by local desk\footnote{A \emph{desk} can be thought of as an application space inside of user space.} permissions. The returned noun is all the user defined tables, views, and indices in the selected namespace, including all their schema and data states.
+and pause to point out the path is on the local ship, but still confined by local desk\footnote{A \emph{desk} can be thought of as an application space inside of userspace.} permissions. The returned noun is all the user defined tables, views, and indices in the selected namespace, including all their schema and data states.
 
 \begin{lstlisting}[style=listingcode_sql]
 SELECT my-table
 
-~/%obelisk/db1/dbo/my-table
+~/obelisk/db1/dbo/my-table
 \end{lstlisting}
 
 \noindent
@@ -430,21 +429,21 @@ The reader may wonder about the syntax here. Submission of urQL scripts to the O
 We cannot tell from the syntax (or the returned metadata) whether the query returned the data from a table or view. Views can shadow tables. To force a table add the \lstinline[style=inlinecode]{TABLE} keyword to the script, or in the namespace,
 
 \begin{lstlisting}[style=listingcode_sql]
-~/%obelisk/db1/dbo/table/my-table
+~/obelisk/db1/dbo/table/my-table
 \end{lstlisting}
 
 \noindent
 and use \lstinline[style=inlinecode]{AS OF} for a particular state,
 
 \begin{lstlisting}[style=listingcode_sql]
-~/%obelisk/db1/dbo/my-table/~2020.1.26
+~/obelisk/db1/dbo/my-table/~2020.1.26
 \end{lstlisting}
 
 The final drill down in the namespace is to the column level,
 
 \begin{lstlisting}[style=listingcode_sql]
 SELECT db1..my-table.column-4
-~/%obelisk/db1/dbo/my-table/column-4
+~/obelisk/db1/dbo/my-table/column-4
 \end{lstlisting}
 \noindent
 Keep in mind Obelisk returns proper sets of data rows. Only a view is capable of deterministic ordering of the result rows when accessing data in this manner.
@@ -461,7 +460,7 @@ To better understand the workings of Obelisk we turn to the data structures. Obe
 
 \subsection[\textsc{ast}/\textsc{api}]{AST/API}
 
-The Obelisk parser parses urQL commands into the structures in file \lstinline[style=inlinecode]{sur/ast.hoon}, which also serves as the Obelisk \textsc{api}. We show the most important schema and content manipulating commands in Figure~\ref{fig:obelisk_ast_schema}. A \lstinline[style=inlinecode]{qualified-column} is one qualified by a \lstinline[style=inlinecode]{qualified-} \lstinline[style=inlinecode]{table}.
+The Obelisk parser parses urQL commands into the structures in file \lstinline[style=inlinecode]{/sur/ast}, which also serves as the Obelisk \textsc{api}. We show the most important schema and content manipulating commands in Figure~\ref{fig:obelisk_ast_schema}. A \lstinline[style=inlinecode]{qualified-column} is one qualified by a \lstinline[style=inlinecode]{qualified-} \lstinline[style=inlinecode]{table}.
 
 \begin{landscape}
 \begin{figure}[p]
@@ -569,7 +568,7 @@ Obelisk does not yet support interacting with tables on foreign ships, so qualif
 
 We see that \lstinline[style=inlinecode]{DELETE} requires a predicate (unlike standard \textsc{sql}) and the predicate data structure is tree-shaped. Predicate nodes are operators, conjunctions, or any number of representations of data.
 
-Figure~\ref{fig:obelisk_query_ast} presents the \lstinline[style=inlinecode]{selection} data structure, also a tree structure which accommodates either a set operator or one of three other structures as nodes. \lstinline[style=inlinecode]{insert} and \lstinline[style=inlinecode]{merge} are for future implementation using the \lstinline[style=inlinecode]{%into} operator. The \lstinline[style=inlinecode]{query} data structure is central to reading and formatting persisted data and can be combined with any of the regular set operators (\lstinline[style=inlinecode]{%union}, \lstinline[style=inlinecode]{%except},\lstinline[style=inlinecode]{%intersect},\lstinline[style=inlinecode]{%divided-by}). If there are \textsc{cte}s, they are processed first to return one relation each. Prior \textsc{cte} relations are accessible by subsequent \textsc{cte}s. Internally different kinds of relation data structure represent data returned by \textsc{cte}s (\lstinline[style=inlinecode]{cte-alias}) or more commonly \lstinline[style=inlinecode]{qualified-table}, which includes (possibly table-shadowing) views. (\lstinline[style=inlinecode]{query-row} is a placeholder for future temporary table urQL syntax.)
+Figure~\ref{fig:obelisk_query_ast} presents the \lstinline[style=inlinecode]{selection} data structure, also a tree structure which accommodates either a set operator or one of three other structures as nodes. \lstinline[style=inlinecode]{insert} and \lstinline[style=inlinecode]{merge} are for future implementation using the \lstinline[style=inlinecode]{%into} operator. The \lstinline[style=inlinecode]{query} data structure is central to reading and formatting persisted data and can be combined with any of the regular set operators (\lstinline[style=inlinecode]{%union}, \lstinline[style=inlinecode]{%except}, \lstinline[style=inlinecode]{%intersect}, \lstinline[style=inlinecode]{%divided-by}). If there are \textsc{cte}s, they are processed first to return one relation each. Prior \textsc{cte} relations are accessible by subsequent \textsc{cte}s. Internally different kinds of relation data structure represent data returned by \textsc{cte}s (\lstinline[style=inlinecode]{cte-alias}) or more commonly \lstinline[style=inlinecode]{qualified-table}, which includes (possibly table-shadowing) views. (\lstinline[style=inlinecode]{query-row} is a placeholder for future temporary table urQL syntax.)
 
 \begin{landscape}
 \begin{figure}[p]
