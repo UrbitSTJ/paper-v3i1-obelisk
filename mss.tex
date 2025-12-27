@@ -836,14 +836,6 @@ The \lstinline[style=inlinecode]{database} structure reveals the simplicity of O
       ascending=?
 ==  ==
 \end{lstlisting}
-\noindent
-\lstinline[style=inlinecode]{columns} returns the columns in canonical order (the order originally defined).
-
-With the table definition established, the actual data is in a \lstinline[style=inlinecode]{file} structure, also containing relevant metadata. At the most basic level, every row of persisted data consists of a key---a list of atoms which is one or more of the subsequent columns, and the column data, which maps from column name to the atomic value. Of all the persistence layer structures, the one actually persisting data is probably the most prone to future development. For purposes of alternating query execution plans, data is persisted in more than one way. \lstinline[style=inlinecode]{(tree [(list @)} \lstinline[style=inlinecode]{(map @tas @)])} is an ordered map allowing ordered selection on partial keys. \lstinline[style=inlinecode]{column-catalog} is a currently abandoned attempt at persisting data column-wise. (Inserting large amounts of data stored column-wise proved impractical, so for now column-wise storage is deferred.) \lstinline[style=inlinecode]{indexed-rows} is the only form currently in use, so for the beta release every query plan execution is a table scan.
-
-\subsection{Presentation Layer}
-
-Aside from urQL, Obelisk users only ever interact with the presentation layer (Figure~\ref{fig:obelisk_presentation_ast}). The Obelisk app allows for two actions, \lstinline[style=inlinecode]{%tape}, which submits a command and default database name in a urQL \lstinline[style=inlinecode]{$tape}, and \lstinline[style=inlinecode]{%commands}, which is a list of \textsc{api} commands where every table and view is already fully qualified by database.
 
 \begin{landscape}
 \begin{figure}[p]
@@ -919,6 +911,15 @@ $%  alter-index
 \label{fig:obelisk_presentation_ast}
 \end{figure}
 \end{landscape}
+
+\noindent
+\lstinline[style=inlinecode]{columns} returns the columns in canonical order (the order originally defined).
+
+With the table definition established, the actual data is in a \lstinline[style=inlinecode]{file} structure, also containing relevant metadata. At the most basic level, every row of persisted data consists of a key---a list of atoms which is one or more of the subsequent columns, and the column data, which maps from column name to the atomic value. Of all the persistence layer structures, the one actually persisting data is probably the most prone to future development. For purposes of alternating query execution plans, data is persisted in more than one way. \lstinline[style=inlinecode]{(tree [(list @)} \lstinline[style=inlinecode]{(map @tas @)])} is an ordered map allowing ordered selection on partial keys. \lstinline[style=inlinecode]{column-catalog} is a currently abandoned attempt at persisting data column-wise. (Inserting large amounts of data stored column-wise proved impractical, so for now column-wise storage is deferred.) \lstinline[style=inlinecode]{indexed-rows} is the only form currently in use, so for the beta release every query plan execution is a table scan.
+
+\subsection{Presentation Layer}
+
+Aside from urQL, Obelisk users only ever interact with the presentation layer (Figure~\ref{fig:obelisk_presentation_ast}). The Obelisk app allows for two actions, \lstinline[style=inlinecode]{%tape}, which submits a command and default database name in a urQL \lstinline[style=inlinecode]{$tape}, and \lstinline[style=inlinecode]{%commands}, which is a list of \textsc{api} commands where every table and view is already fully qualified by database.
 
 This section has covered most of the available commands; several planned commands like alters, drops, and security commands will parse but are not yet supported in the Obelisk engine.
 
