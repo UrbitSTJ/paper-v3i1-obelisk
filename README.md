@@ -1,3 +1,11 @@
+<!-- ustj-doi -->
+# Obelisk: Reinventing SQL for Modern Computing
+
+Jack Fox ~nomryg-nilref. *Urbit Systems Technical Journal* 3(1), 2026.
+
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.24389663.svg)](https://doi.org/10.5281/zenodo.24389663) [Read on urbitsystems.tech](https://urbitsystems.tech/article/v03-i01/obelisk-reinventing-sql-for-modern-computing)
+<!-- /ustj-doi -->
+
 # Urbit Systems Technical Journal—Template Repo
 
 Welcome, prospective USTJ author.  Please keep the following in mind:
